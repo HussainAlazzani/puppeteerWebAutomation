@@ -9,7 +9,7 @@ const formData = require("./formInputs.json");
 testBot();
 
 async function testBot() {
-    const browser = await puppeteer.launch({ headless: true, slowMo: 100 });
+    const browser = await puppeteer.launch({ headless: false, slowMo: 100 });
     const page = await browser.newPage();
 
     await login(page);
@@ -28,11 +28,12 @@ async function login(page) {
     await page.click("input[value='Sign in']");
 
     await page.waitForSelector("div[class='notifications-tab']");
-    await page.click("div[class='notifications-tab']");
-    await page.waitForTimeout(1000);
 }
 
 async function logNotifications(page, fileName) {
+    await page.click("div[class='notifications-tab']");
+    await page.waitForTimeout(1000);
+    
     let notifications = await page.$$eval("body > header > div.notifications.js-notifications > ul > li", liElemets => {
         return liElemets.map(li => li.textContent);
     });
@@ -45,29 +46,28 @@ async function logNotifications(page, fileName) {
     });
 }
 
-
 async function offence(page, source) {
     await page.goto(formData.offenceURL);
     await page.waitForSelector(".js-kill[type='submit']");
 
     try {
-        // Get the list of targets from csv file
         if (fs.existsSync(source)) {
-            const targets = await csvToJson().fromFile(source);
+            const victims = await csvToJson().fromFile(source);
 
-            for (let i = 0; i < targets.length; i++) {
+            for (const victim of victims) {
                 await page.goto(formData.offenceURL);
                 await page.waitForSelector("#KillUser");
 
-                await page.type("#KillUser", targets[i].username, { delay: 100 });
-                await page.type("#BulletsRaw", targets[i].bullets);
-                await page.type("#DeathMessage", targets[i].message, { delay: 100 })
-                if (targets[i].public.toLowerCase() === "yes") {
+                await page.type("#KillUser", victim.username, { delay: 100 });
+                await page.type("#BulletsRaw", victim.bullets);
+                await page.type("#DeathMessage", victim.message, { delay: 100 })
+                if (victim.public.toLowerCase() === "yes") {
                     await page.click("#pub");
                 }
-
-                // await page.click(".js-kill[type='submit']");
             }
+        }
+        else {
+            console.error("File constaining list of victims does not exist.")
         }
     } catch (error) {
         console.error(error);
